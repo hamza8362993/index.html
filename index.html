@@ -3,516 +3,461 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>MiniCity — Prototype</title>
+<title>IsoCity — Prototype Pixel Isométrique</title>
 <style>
-  :root{
-    --bg:#0b1020; --panel:#071228; --accent:#00d1ff; --muted:#9fbccf;
-  }
-  html,body{height:100%;margin:0;background:var(--bg);font-family:Inter,Arial;color:#dff9ff}
-  #app{display:flex;height:100vh;gap:10px}
-  #left{width:86%;position:relative}
-  #ui{width:14%;min-width:220px;background:linear-gradient(180deg,var(--panel),#05121b);padding:14px;box-sizing:border-box;border-left:1px solid rgba(255,255,255,0.03)}
-  canvas{display:block;background:linear-gradient(#0a1622,#022);}
-  h1{font-size:18px;margin:0 0 12px 0;color:var(--accent)}
-  .tool{display:flex;flex-direction:column;gap:8px}
-  button,select{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);padding:8px;border-radius:8px;cursor:pointer}
-  button.active{border-color:var(--accent);box-shadow:0 6px 18px rgba(0,209,255,0.06);color:#eaffff}
+  :root{--bg:#0b1220;--panel:#06131a;--accent:#00d3ff;--muted:#9fbccf}
+  html,body{height:100%;margin:0;background:var(--bg);font-family:Inter,Arial;color:#e6fbff}
+  #wrap{display:flex;gap:10px;height:100vh}
+  #left{flex:1;position:relative;background:#05141a}
+  #ui{width:300px;background:linear-gradient(#04121a,#031418);padding:12px;box-sizing:border-box;border-left:1px solid rgba(255,255,255,0.03)}
+  canvas{display:block;background:linear-gradient(#0a1820,#042029)}
+  h1{margin:0;color:var(--accent);font-size:18px}
+  button{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#cfe}
   .row{display:flex;gap:8px;margin-top:8px}
-  .small{font-size:12px;color:#9fbccf}
-  #legend{margin-top:12px;font-size:13px}
-  .counter{margin:8px 0;padding:10px;border-radius:8px;background:rgba(0,0,0,0.12);font-weight:700}
+  .small{font-size:13px;color:#9fbccf}
   input[type=range]{width:100%}
-  footer{position:absolute;left:12px;bottom:12px;color:#7fb}
+  .counter{margin-top:10px;padding:8px;background:rgba(0,0,0,0.12);border-radius:8px}
+  footer{position:absolute;left:10px;bottom:8px;color:#7fb}
+  .toolBtn.active{border-color:var(--accent);box-shadow:0 6px 18px rgba(0,211,255,0.04)}
 </style>
 </head>
 <body>
-<div id="app">
+<div id="wrap">
   <div id="left">
-    <canvas id="game"></canvas>
-    <footer>MiniCity prototype — créé par hamza</footer>
+    <canvas id="c"></canvas>
+    <footer>IsoCity — prototype • créé par hamza</footer>
   </div>
   <div id="ui">
-    <h1>MiniCity</h1>
-    <div class="tool">
-      <div class="small">Outils</div>
-      <div class="row">
-        <button id="tool-road" class="active">Route</button>
-        <button id="tool-house">Maison</button>
-      </div>
-      <div class="row">
-        <button id="tool-tree">Arbre</button>
-        <button id="tool-erase">Gomme</button>
-      </div>
-
-      <div class="small" style="margin-top:10px">Simulation</div>
-      <div class="row">
-        <button id="start">Démarrer</button>
-        <button id="pause">Pause</button>
-      </div>
-
-      <div class="counter"><div>Véhicules: <span id="countCars">0</span></div><div>Habitants: <span id="countPop">0</span></div></div>
-
-      <div class="small">Zoom</div>
-      <input id="zoom" type="range" min="0.6" max="2.2" step="0.1" value="1">
-
-      <div class="small" style="margin-top:8px">Spawn rate (cars)</div>
-      <input id="spawnRate" type="range" min="0" max="2" step="0.1" value="0.8">
-
-      <div class="small" style="margin-top:8px">Sauvegarde</div>
-      <div class="row">
-        <button id="save">Sauvegarder</button>
-        <button id="load">Charger</button>
-      </div>
-
-      <div id="legend">
-        <div class="small">Astuce:</div>
-        <div class="small">- Trace des routes, place maisons à côté.</div>
-        <div class="small">- Les voitures vont d'un bâtiment à un autre via les routes.</div>
-      </div>
+    <h1>IsoCity</h1>
+    <div class="small">Outils</div>
+    <div class="row" style="margin-top:8px">
+      <button id="b-road" class="toolBtn active">Route</button>
+      <button id="b-house" class="toolBtn">Maison</button>
+      <button id="b-tree" class="toolBtn">Arbre</button>
+      <button id="b-bill" class="toolBtn">Panneau</button>
+      <button id="b-erase" class="toolBtn">Gomme</button>
     </div>
+
+    <div class="small" style="margin-top:12px">Simulation</div>
+    <div class="row" style="margin-top:8px">
+      <button id="start">Démarrer</button>
+      <button id="pause">Pause</button>
+      <button id="reset">Reset</button>
+    </div>
+
+    <div class="counter">
+      <div>Voitures : <span id="cars">0</span></div>
+      <div>Maisons : <span id="houses">0</span></div>
+      <div class="small" style="margin-top:6px">Spawn cars / s</div>
+      <input id="spawn" type="range" min="0" max="2" step="0.05" value="0.6">
+    </div>
+
+    <div style="margin-top:10px">
+      <div class="small">Zoom</div>
+      <input id="zoom" type="range" min="0.6" max="1.8" step="0.05" value="1">
+    </div>
+
+    <div style="margin-top:10px">
+      <button id="save">Sauvegarder</button>
+      <button id="load">Charger</button>
+    </div>
+
+    <div style="margin-top:12px" class="small">Astuce : clique & dessine routes, place maisons à côté des routes, lance la simulation.</div>
   </div>
 </div>
 
 <script>
-/* ===== MiniCity - Isometric tile simulation =====
-   Features:
-   - isometric tilemap rendered on canvas
-   - tools: draw road / place house / tree / erase
-   - cars spawn and pathfind on roads between houses
-   - zoom and pan (drag)
-   - save/load (localStorage)
-   This is a single-file prototype ready to deploy on GitHub Pages.
+/* ===== IsoCity prototype (isometric, pixel-style) =====
+  - grid tilemap (isometric)
+  - tools: draw road / house / tree / billboard / erase
+  - cars use A* on road graph
+  - pixel-ish drawing using canvas (no external images)
 */
 
-// -------- config --------
-const TILE_W = 64, TILE_H = 32;      // isometric tile size
-const MAP_W = 80, MAP_H = 80;        // grid size
-const CANVAS_MARGIN = 100;
-
-// tile types: 0 empty, 1 road, 2 house, 3 tree
-let map = new Uint8Array(MAP_W * MAP_H);
-let buildings = []; // houses list {i,j,id}
-let cars = [];      // car objects
-let carId = 1;
-
-// UI nodes
-const canvas = document.getElementById('game');
+// ---------- Config ----------
+const TILE_W = 64, TILE_H = 32;    // base tile size (pixels)
+const MAP_W = 80, MAP_H = 80;      // map tiles
+const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
-const toolRoad = document.getElementById('tool-road');
-const toolHouse = document.getElementById('tool-house');
-const toolTree = document.getElementById('tool-tree');
-const toolErase = document.getElementById('tool-erase');
-const startBtn = document.getElementById('start');
-const pauseBtn = document.getElementById('pause');
+let DPR = window.devicePixelRatio || 1;
+
+function resizeCanvas(){
+  canvas.width = Math.floor(window.innerWidth*0.86 * DPR);
+  canvas.height = Math.floor(window.innerHeight * DPR);
+  canvas.style.width = Math.floor(window.innerWidth*0.86) + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+}
+window.addEventListener('resize', ()=>{ DPR = window.devicePixelRatio || 1; resizeCanvas(); });
+resizeCanvas();
+
+// camera/pan/zoom
+let camX = canvas.width/2 / DPR, camY = 140, zoom = 1;
 const zoomSlider = document.getElementById('zoom');
-const spawnRateInput = document.getElementById('spawnRate');
-const saveBtn = document.getElementById('save');
-const loadBtn = document.getElementById('load');
-const countCars = document.getElementById('countCars');
-const countPop = document.getElementById('countPop');
+zoomSlider.oninput = ()=> { zoom = parseFloat(zoomSlider.value); render(); };
 
-let currentTool = 'road';
-let running = false;
-let zoom = parseFloat(zoomSlider.value);
-let spawnRate = parseFloat(spawnRateInput.value);
+let isPanning=false, lastPan=null;
+canvas.addEventListener('mousedown', e=>{
+  if(e.button===1 || e.button===2){ isPanning=true; lastPan={x:e.clientX,y:e.clientY}; return; }
+  handlePointer(e);
+});
+canvas.addEventListener('mousemove', e=>{ if(isPanning && lastPan){ camX += e.clientX - lastPan.x; camY += e.clientY - lastPan.y; lastPan={x:e.clientX,y:e.clientY}; render(); } else if(mouseDown){ handlePointer(e); }});
+window.addEventListener('mouseup', ()=>{ isPanning=false; lastPan=null; mouseDown=false; });
+canvas.addEventListener('wheel', e=>{ e.preventDefault(); zoom *= (e.deltaY>0?0.95:1.05); zoom=Math.max(0.6, Math.min(1.8, zoom)); zoomSlider.value=zoom; render(); }, {passive:false});
 
-// camera / pan
-let camX = 0, camY = 0;
-let isPanning = false, lastPan = null;
+// map data: 0 empty, 1 road, 2 house, 3 tree, 4 billboard
+const map = new Uint8Array(MAP_W * MAP_H);
+const houses = []; // {i,j}
+const billboards = [];
 
-// initialize canvas size
-function resize(){
-  canvas.width = Math.max(800, window.innerWidth * 0.86);
-  canvas.height = Math.max(600, window.innerHeight - 20);
-  // center map
-  camX = canvas.width/2;
-  camY = 120;
-}
-window.addEventListener('resize', resize);
-resize();
-
-// helper: grid index
+// helpers
 function idx(i,j){ return i + j*MAP_W; }
+function inside(i,j){ return i>=0 && j>=0 && i<MAP_W && j<MAP_H; }
 
-// simple get/set
-function getTile(i,j){ if(i<0||j<0||i>=MAP_W||j>=MAP_H) return 0; return map[idx(i,j)]; }
-function setTile(i,j,v){
-  if(i<0||j<0||i>=MAP_W||j>=MAP_H) return;
-  map[idx(i,j)] = v;
-}
-
-// iso projection (grid -> screen)
+// isometric projection grid->screen
 function isoToScreen(i,j){
-  const x = (i - j) * (TILE_W/2);
-  const y = (i + j) * (TILE_H/2);
-  return {x: x*zoom + camX, y: y*zoom + camY};
+  const x = (i - j) * (TILE_W/2) * zoom + camX;
+  const y = (i + j) * (TILE_H/2) * zoom + camY;
+  return {x,y};
 }
 function screenToIso(sx,sy){
   const x = (sx - camX)/zoom;
   const y = (sy - camY)/zoom;
-  const i = Math.round( (y / (TILE_H/2) + x / (TILE_W/2)) /2 );
-  const j = Math.round( (y / (TILE_H/2) - x / (TILE_W/2)) /2 );
+  const i = Math.floor((y / (TILE_H/2) + x / (TILE_W/2)) / 2);
+  const j = Math.floor((y / (TILE_H/2) - x / (TILE_W/2)) / 2);
   return {i,j};
 }
 
-// draw one tile base (flat ground)
+// draw pixel-ish ground tile
 function drawGround(i,j){
   const p = isoToScreen(i,j);
-  const x = p.x, y = p.y;
-  // diamond
+  // diamond filled with subtle texture
+  const grad = ctx.createLinearGradient(p.x, p.y - TILE_H*0.45*zoom, p.x, p.y + TILE_H*0.45*zoom);
+  grad.addColorStop(0, "#274b3a");
+  grad.addColorStop(1, "#1c3a2b");
+  ctx.fillStyle = grad;
   ctx.beginPath();
-  ctx.moveTo(x, y - TILE_H/2*zoom);
-  ctx.lineTo(x + TILE_W/2*zoom, y);
-  ctx.lineTo(x, y + TILE_H/2*zoom);
-  ctx.lineTo(x - TILE_W/2*zoom, y);
+  ctx.moveTo(p.x, p.y - (TILE_H/2)*zoom);
+  ctx.lineTo(p.x + (TILE_W/2)*zoom, p.y);
+  ctx.lineTo(p.x, p.y + (TILE_H/2)*zoom);
+  ctx.lineTo(p.x - (TILE_W/2)*zoom, p.y);
   ctx.closePath();
-  ctx.fillStyle = "#0b2b22";
   ctx.fill();
-  ctx.strokeStyle = "rgba(0,0,0,0.06)";
+  // pixel border
+  ctx.strokeStyle = "rgba(0,0,0,0.15)";
   ctx.stroke();
 }
 
-// draw road tile
+// draw road tile (isometric rectangle)
 function drawRoad(i,j){
   const p = isoToScreen(i,j);
-  const x = p.x, y = p.y;
-  ctx.beginPath();
-  ctx.moveTo(x - TILE_W/4*zoom, y - TILE_H/8*zoom);
-  ctx.lineTo(x + TILE_W/4*zoom, y - TILE_H/8*zoom);
-  ctx.lineTo(x + TILE_W/4*zoom, y + TILE_H/8*zoom);
-  ctx.lineTo(x - TILE_W/4*zoom, y + TILE_H/8*zoom);
-  ctx.closePath();
   ctx.fillStyle = "#3a3a3a";
+  ctx.beginPath();
+  ctx.moveTo(p.x - (TILE_W/4)*zoom, p.y - (TILE_H/8)*zoom);
+  ctx.lineTo(p.x + (TILE_W/4)*zoom, p.y - (TILE_H/8)*zoom);
+  ctx.lineTo(p.x + (TILE_W/4)*zoom, p.y + (TILE_H/8)*zoom);
+  ctx.lineTo(p.x - (TILE_W/4)*zoom, p.y + (TILE_H/8)*zoom);
+  ctx.closePath();
   ctx.fill();
-  ctx.strokeStyle = "rgba(0,0,0,0.2)";
+  // center line hint occasional
+  ctx.strokeStyle = "rgba(255,255,255,0.06)";
   ctx.stroke();
 }
 
-// draw house
+// draw house sprite (simple isometric house pixel style)
 function drawHouse(i,j){
   const p = isoToScreen(i,j);
-  const x = p.x, y = p.y;
+  const baseW = 34*zoom, baseH = 20*zoom;
   // base
-  ctx.fillStyle = "#caa48a";
-  ctx.fillRect(x-18*zoom, y-28*zoom, 36*zoom, 22*zoom);
-  // roof
+  ctx.fillStyle = "#d9b89b";
   ctx.beginPath();
-  ctx.moveTo(x-22*zoom, y-28*zoom);
-  ctx.lineTo(x, y-48*zoom);
-  ctx.lineTo(x+22*zoom, y-28*zoom);
+  ctx.moveTo(p.x - baseW/2, p.y);
+  ctx.lineTo(p.x, p.y - baseH);
+  ctx.lineTo(p.x + baseW/2, p.y);
+  ctx.lineTo(p.x, p.y + baseH/2);
   ctx.closePath();
-  ctx.fillStyle = "#8b3b2b";
   ctx.fill();
-  ctx.strokeStyle = "rgba(0,0,0,0.18)"; ctx.stroke();
+  // roof
+  ctx.fillStyle = "#7a2d2d";
+  ctx.beginPath();
+  ctx.moveTo(p.x - baseW/2, p.y);
+  ctx.lineTo(p.x, p.y - (baseH + 12*zoom));
+  ctx.lineTo(p.x + baseW/2, p.y);
+  ctx.closePath();
+  ctx.fill();
+  // small door
+  ctx.fillStyle = "#4a2f24";
+  ctx.fillRect(p.x-6*zoom, p.y - 6*zoom, 8*zoom, 8*zoom);
 }
 
 // draw tree
 function drawTree(i,j){
   const p = isoToScreen(i,j);
-  const x = p.x, y = p.y;
+  ctx.fillStyle = "#1d6f39";
   ctx.beginPath();
-  ctx.arc(x, y-8*zoom, 10*zoom, 0, Math.PI*2);
-  ctx.fillStyle = "#167639";
+  ctx.arc(p.x, p.y - 6*zoom, 10*zoom, 0, Math.PI*2);
   ctx.fill();
-  ctx.fillStyle = "#0b2c18";
-  ctx.fillRect(x-2*zoom, y-8*zoom, 4*zoom, 8*zoom);
+  ctx.fillStyle = "#3b1f09";
+  ctx.fillRect(p.x-2*zoom, p.y-6*zoom, 4*zoom, 8*zoom);
 }
 
-// draw car sprite
-function drawCar(car){
-  const p = isoToScreen(car.i + car.tdx, car.j + car.tdy);
-  const x = p.x, y = p.y - 6*zoom;
-  ctx.save();
-  ctx.translate(x,y);
-  ctx.rotate(car.angle);
-  // car body
-  ctx.fillStyle = car.color;
-  ctx.fillRect(-6*zoom, -3*zoom, 12*zoom, 6*zoom);
-  // windshield
-  ctx.fillStyle = "#e8ffff"; ctx.fillRect(-3*zoom, -2*zoom, 6*zoom, 3*zoom);
-  ctx.restore();
+// billboard
+function drawBill(i,j){
+  const p = isoToScreen(i,j);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(p.x + 12*zoom, p.y - 28*zoom, 36*zoom, 18*zoom);
+  ctx.fillStyle = "#c33";
+  ctx.fillText("SALE", p.x + 18*zoom, p.y - 16*zoom);
+  // pole
+  ctx.fillStyle = "#999";
+  ctx.fillRect(p.x+20*zoom, p.y - 10*zoom, 4*zoom, 24*zoom);
 }
 
-// render loop
+// render map
 function render(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  // draw ground tiles (only visible region)
-  const margin = 12;
+  ctx.save();
+  ctx.scale(DPR,DPR);
+  // draw ground tiles in painter order
   for(let j=0;j<MAP_H;j++){
     for(let i=0;i<MAP_W;i++){
       const p = isoToScreen(i,j);
-      if(p.x < -1000 || p.x > canvas.width+1000 || p.y < -1000 || p.y > canvas.height+1000) continue;
+      // quick cull
+      if(p.x < -200 || p.x > canvas.width/DPR + 200 || p.y < -200 || p.y > canvas.height/DPR + 200) continue;
       drawGround(i,j);
-    }
-  }
-  // draw roads and buildings in correct order (simple painter)
-  for(let j=0;j<MAP_H;j++){
-    for(let i=0;i<MAP_W;i++){
-      const t = getTile(i,j);
+      const t = map[idx(i,j)];
       if(t===1) drawRoad(i,j);
       else if(t===2) drawHouse(i,j);
       else if(t===3) drawTree(i,j);
+      else if(t===4) drawBill(i,j);
     }
   }
-  // draw cars
+  // draw cars (after map)
   for(const car of cars) drawCar(car);
-
-  // counters
-  countCars.textContent = cars.length;
-  countPop.textContent = buildings.length * 3; // rough pop per house
-  requestAnimationFrame(render);
+  // HUD small counts
+  document.getElementById('cars').textContent = cars.length;
+  document.getElementById('houses').textContent = houses.length;
+  ctx.restore();
 }
-requestAnimationFrame(render);
 
-// ------- tools behavior -------
-function setActiveTool(name){
-  currentTool = name;
-  [toolRoad,toolHouse,toolTree,toolErase].forEach(b=>{
-    b.classList.toggle('active', b.id === 'tool-'+name);
-  });
-}
-toolRoad.onclick = ()=> setActiveTool('road');
-toolHouse.onclick = ()=> setActiveTool('house');
-toolTree.onclick = ()=> setActiveTool('tree');
-toolErase.onclick = ()=> setActiveTool('erase');
+// ---------- tools & input ----------
+let currentTool='road';
+const setTool = t=> {
+  currentTool=t;
+  document.querySelectorAll('.toolBtn').forEach(b=>b.classList.toggle('active', b.id === 'b-'+t));
+};
+document.getElementById('b-road').onclick = ()=> setTool('road');
+document.getElementById('b-house').onclick = ()=> setTool('house');
+document.getElementById('b-tree').onclick = ()=> setTool('tree');
+document.getElementById('b-bill').onclick = ()=> setTool('bill');
+document.getElementById('b-erase').onclick = ()=> setTool('erase');
 
-zoomSlider.oninput = ()=> { zoom = parseFloat(zoomSlider.value); };
-spawnRateInput.oninput = ()=> { spawnRate = parseFloat(spawnRateInput.value); };
-
-// painting on click / drag
-let mouseDown = false;
-canvas.addEventListener('mousedown', (e)=>{
-  const rc = canvas.getBoundingClientRect();
-  const sx = e.clientX - rc.left;
-  const sy = e.clientY - rc.top;
-  if(e.button === 1 || e.button === 2){ // middle or right to pan
-    isPanning = true; lastPan = {x:e.clientX, y:e.clientY}; return;
-  }
-  mouseDown = true;
-  applyToolAt(sx,sy);
+let mouseDown=false;
+canvas.addEventListener('mousedown', e=>{
+  if(e.button===1||e.button===2){ isPanning=true; lastPan={x:e.clientX,y:e.clientY}; return; }
+  mouseDown=true;
+  handlePointer(e);
 });
-canvas.addEventListener('mousemove', (e)=>{
-  const rc = canvas.getBoundingClientRect();
-  const sx = e.clientX - rc.left;
-  const sy = e.clientY - rc.top;
-  if(isPanning && lastPan){
-    camX += e.clientX - lastPan.x;
-    camY += e.clientY - lastPan.y;
-    lastPan = {x:e.clientX, y:e.clientY};
-  }
-  if(mouseDown) applyToolAt(sx,sy);
-});
-window.addEventListener('mouseup', ()=>{ mouseDown = false; isPanning = false; lastPan = null; });
+canvas.addEventListener('mouseup', ()=>mouseDown=false);
+canvas.addEventListener('mousemove', e=>{ if(mouseDown) handlePointer(e); if(isPanning && lastPan){ camX += e.clientX - lastPan.x; camY += e.clientY - lastPan.y; lastPan={x:e.clientX,y:e.clientY}; render(); } });
 
-function applyToolAt(sx,sy){
+function handlePointer(e){
+  const rc = canvas.getBoundingClientRect();
+  const sx = (e.clientX - rc.left);
+  const sy = (e.clientY - rc.top);
   const {i,j} = screenToIso(sx,sy);
-  if(i<0||j<0||i>=MAP_W||j>=MAP_H) return;
-  if(currentTool === 'road'){ setTile(i,j,1); }
-  else if(currentTool === 'house'){
-    // only place house if adjacent to road
-    if(adjacentToRoad(i,j)){
-      setTile(i,j,2);
-      buildings.push({i,j,id:buildings.length+1});
-    }
-  } else if(currentTool === 'tree'){ setTile(i,j,3); }
-  else if(currentTool === 'erase'){ 
-    if(getTile(i,j)===2){
-      // remove building from array
-      buildings = buildings.filter(b=>!(b.i===i && b.j===j));
-    }
-    setTile(i,j,0);
-  }
+  if(!inside(i,j)) return;
+  if(currentTool==='road'){ map[idx(i,j)] = 1; }
+  else if(currentTool==='house'){ if(hasAdjacentRoad(i,j)){ map[idx(i,j)] = 2; houses.push({i,j}); } }
+  else if(currentTool==='tree'){ map[idx(i,j)] = 3; }
+  else if(currentTool==='bill'){ map[idx(i,j)] = 4; billboards.push({i,j}); }
+  else if(currentTool==='erase'){ if(map[idx(i,j)]===2) { // remove house
+      for(let k=houses.length-1;k>=0;k--) if(houses[k].i===i && houses[k].j===j) houses.splice(k,1);
+    } map[idx(i,j)] = 0; }
+  render();
 }
 
-// check adjacent tile is road
-function adjacentToRoad(i,j){
-  const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
-  for(const d of dirs) if(getTile(i+d[0], j+d[1])===1) return true;
+function hasAdjacentRoad(i,j){
+  const d=[[1,0],[-1,0],[0,1],[0,-1]];
+  for(const dd of d) if(inside(i+dd[0],j+dd[1]) && map[idx(i+dd[0],j+dd[1])]==1) return true;
   return false;
 }
 
-// ------- simple pathfinding (grid A* on road tiles) -------
-function findPath(si,sj,ti,tj){
-  // restrict to positions where tiles are road
-  // both start and target are supposed to be road-adjacent; here we find nearest road cell
-  const start = findNearestRoadCell(si,sj);
-  const goal = findNearestRoadCell(ti,tj);
-  if(!start || !goal) return null;
-  const key = (a,b)=> a + "," + b;
-  const open = new Map(); // key -> node
-  const closed = new Set();
-  function h(a,b){ return Math.abs(a-goal.i) + Math.abs(b-goal.j); }
-  const startKey = key(start.i,start.j);
-  open.set(startKey, {i:start.i,j:start.j,g:0,f:h(start.i,start.j),parent:null});
-  const maxIter = 5000;
-  let iter = 0;
-  while(open.size && iter++ < maxIter){
-    // pick smallest f
-    let curKey, curNode;
-    for(const [k,n] of open){ if(!curNode || n.f < curNode.f){ curNode=n; curKey=k; } }
-    open.delete(curKey);
-    closed.add(curKey);
-    if(curNode.i===goal.i && curNode.j===goal.j){
-      // reconstruct
-      const path = [];
-      let n = curNode;
-      while(n){ path.push({i:n.i,j:n.j}); n = n.parent; }
-      path.reverse();
-      return path;
-    }
-    const neighbors = [[1,0],[-1,0],[0,1],[0,-1]];
-    for(const nb of neighbors){
-      const ni = curNode.i + nb[0], nj = curNode.j + nb[1];
-      const nk = key(ni,nj);
-      if(closed.has(nk)) continue;
-      if(getTile(ni,nj) !== 1) continue; // only road tiles
-      const g = curNode.g + 1;
-      const hcost = h(ni,nj);
-      const f = g + hcost;
-      const existing = open.get(nk);
-      if(!existing || g < existing.g){
-        open.set(nk, {i:ni,j:nj,g, f, parent:curNode});
-      }
+// ---------- A* pathfinding on roads ----------
+function buildRoadGraph(){
+  const nodes = {};
+  for(let j=0;j<MAP_H;j++) for(let i=0;i<MAP_W;i++){
+    if(map[idx(i,j)]===1){
+      const key = i+','+j;
+      nodes[key] = [];
+      const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+      for(const d of dirs) if(inside(i+d[0],j+d[1]) && map[idx(i+d[0],j+d[1])]==1) nodes[key].push((i+d[0])+','+(j+d[1]));
     }
   }
-  return null;
+  return nodes;
 }
-function findNearestRoadCell(i,j){
-  if(getTile(i,j)===1) return {i,j};
-  // BFS spiral
-  const maxR = 10;
+
+function findNearestRoad(i,j){
+  if(map[idx(i,j)]===1) return {i,j};
+  // BFS small radius
+  const maxR=6;
   for(let r=1;r<=maxR;r++){
     for(let dx=-r;dx<=r;dx++){
       for(let dy=-r;dy<=r;dy++){
         if(Math.abs(dx)!==r && Math.abs(dy)!==r) continue;
-        const ni = i+dx, nj = j+dy;
-        if(ni<0||nj<0||ni>=MAP_W||nj>=MAP_H) continue;
-        if(getTile(ni,nj)===1) return {i:ni,j:nj};
+        const ni=i+dx,nj=j+dy;
+        if(!inside(ni,nj)) continue;
+        if(map[idx(ni,nj)]===1) return {i:ni,j:nj};
       }
     }
   }
   return null;
 }
 
-// ------- car simulation -------
+function astar(start,goal,graph){
+  const startKey = start.i+','+start.j;
+  const goalKey = goal.i+','+goal.j;
+  if(!graph[startKey] || !graph[goalKey]) return null;
+  const open = new Map();
+  const closed = new Set();
+  function h(k){ const [x,y]=k.split(',').map(Number); const [gx,gy]=goalKey.split(',').map(Number); return Math.abs(x-gx)+Math.abs(y-gy); }
+  open.set(startKey,{k:startKey,g:0,f:h(startKey),parent:null});
+  const maxIter=5000; let iter=0;
+  while(open.size && iter++<maxIter){
+    // get lowest f
+    let bestKey, bestNode;
+    for(const [k,node] of open) if(!bestNode || node.f < bestNode.f){ bestNode=node; bestKey=k; }
+    open.delete(bestKey);
+    if(bestKey===goalKey){
+      // reconstruct
+      const path=[];
+      let n=bestNode;
+      while(n){ const [xi,yi]=n.k.split(',').map(Number); path.push({i:xi,j:yi}); n=n.parent; }
+      path.reverse(); return path;
+    }
+    closed.add(bestKey);
+    for(const nb of graph[bestKey]){
+      if(closed.has(nb)) continue;
+      const g = bestNode.g + 1;
+      const existing = open.get(nb);
+      const f = g + h(nb);
+      if(!existing || g < existing.g) open.set(nb,{k:nb,g,f,parent:bestNode});
+    }
+  }
+  return null;
+}
+
+// ---------- cars simulation ----------
+const cars = [];
+let carId = 1;
 function spawnCar(){
-  if(buildings.length < 2) return;
-  // pick two houses randomly
-  const a = buildings[Math.floor(Math.random()*buildings.length)];
-  const b = buildings[Math.floor(Math.random()*buildings.length)];
-  if(a===b) return;
-  const path = findPath(a.i,a.j,b.i,b.j);
+  if(houses.length < 2) return;
+  // pick two random houses
+  const a = houses[Math.floor(Math.random()*houses.length)];
+  let b = houses[Math.floor(Math.random()*houses.length)];
+  if(!b || (b.i===a.i && b.j===a.j)) return;
+  const start = findNearestRoad(a.i,a.j);
+  const goal = findNearestRoad(b.i,b.j);
+  if(!start || !goal) return;
+  const graph = buildRoadGraph();
+  const path = astar(start,goal,graph);
   if(!path || path.length<2) return;
-  const car = {
-    id: carId++,
-    path,
-    posIndex:0,
-    progress:0,
-    speed: 0.004 + Math.random()*0.006,
-    color: pickColor(),
-    i: path[0].i, j: path[0].j, tdx:0, tdy:0, angle:0
-  };
+  const car = {id:carId++, path, idx:0, t:0, speed:0.003 + Math.random()*0.006, color:randomColor()};
   cars.push(car);
 }
-function pickColor(){
-  const col = ["#ffcc00","#ff6666","#66ff66","#66ccff","#ff66cc","#ffaa66"];
-  return col[Math.floor(Math.random()*col.length)];
+
+function randomColor(){
+  const cols = ["#ffcc00","#ff6666","#66ff66","#66ccff","#ff66cc","#ffaa66"];
+  return cols[Math.floor(Math.random()*cols.length)];
 }
+
 function updateCars(dt){
   for(let k=cars.length-1;k>=0;k--){
     const c = cars[k];
-    c.progress += c.speed * dt * 0.06;
     const seg = c.path;
-    if(c.posIndex >= seg.length-1){ // reached
-      cars.splice(k,1); continue;
-    }
-    // interpolate between seg[posIndex] and seg[posIndex+1]
-    const a = seg[c.posIndex], b = seg[c.posIndex+1];
-    const t = Math.min(1, c.progress);
-    c.i = a.i; c.j = a.j;
-    // compute normalized dx/dy for sub-tile offset to render between tiles
-    c.tdx = (b.i - a.i) * t;
-    c.tdy = (b.j - a.j) * t;
-    // angle
-    const sx = (b.i - a.i), sy = (b.j - a.j);
-    c.angle = Math.atan2((sx - sy), (sx + sy)) * 0.8; // cosmetic
-    if(c.progress >= 1){
-      c.posIndex++;
-      c.progress = 0;
-      if(c.posIndex >= seg.length-1){
-        // reached dest, remove after small delay
-        cars.splice(k,1);
-      }
-    }
+    c.t += c.speed * dt;
+    if(c.t >= 1){ c.idx++; c.t = 0; }
+    if(c.idx >= seg.length-1){ cars.splice(k,1); continue; }
   }
 }
 
-// main sim tick
-let lastTick = performance.now();
-function tick(){
+function drawCar(car){
+  // compute interp pos between path[idx] and path[idx+1]
+  const a = car.path[car.idx], b = car.path[car.idx+1] || a;
+  const px = a.i + (b.i - a.i) * car.t;
+  const py = a.j + (b.j - a.j) * car.t;
+  const p = isoToScreen(px, py);
+  // small pixel car
+  ctx.fillStyle = car.color;
+  ctx.fillRect(p.x - 6*zoom, p.y - 8*zoom, 12*zoom, 6*zoom);
+  // tiny windows
+  ctx.fillStyle = "#e6ffff";
+  ctx.fillRect(p.x - 2*zoom, p.y - 7*zoom, 4*zoom, 3*zoom);
+}
+
+// main loop
+let last = performance.now();
+let running = false;
+let spawnRate = parseFloat(document.getElementById('spawn').value);
+document.getElementById('spawn').oninput = e=> spawnRate = parseFloat(e.target.value);
+
+function loop(){
   const now = performance.now();
-  const dt = Math.min(40, now - lastTick);
-  lastTick = now;
+  const dt = Math.min(60, now - last);
+  last = now;
   if(running){
-    // spawn cars randomly based on spawnRate
+    // spawn logic
     if(Math.random() < spawnRate * dt * 0.001) spawnCar();
     updateCars(dt);
   }
-  requestAnimationFrame(tick);
+  renderCars();
+  requestAnimationFrame(loop);
 }
-tick();
+function renderCars(){
+  // draw map + cars
+  render();
+  // draw cars after map
+  for(const c of cars) drawCar(c);
+}
+loop();
 
-// UI events
-startBtn.onclick = ()=> running = true;
-pauseBtn.onclick = ()=> running = false;
-zoomSlider.oninput = ()=> { zoom = parseFloat(zoomSlider.value); };
-spawnRateInput.oninput = ()=> { spawnRate = parseFloat(spawnRateInput.value); };
+// UI controls
+document.getElementById('start').onclick = ()=> running = true;
+document.getElementById('pause').onclick = ()=> running = false;
+document.getElementById('reset').onclick = ()=> { for(let i=0;i<map.length;i++) map[i]=0; houses.length=0; billboards.length=0; cars.length=0; render(); };
 
-saveBtn.onclick = ()=>{
-  const data = {
-    map: Array.from(map),
-    buildings,
-    camX, camY, zoom
-  };
-  localStorage.setItem('minicity_save', JSON.stringify(data));
-  alert('Sauvegardé localement');
+// save/load
+document.getElementById('save').onclick = ()=>{
+  const data = {map: Array.from(map), houses, billboards, camX, camY, zoom};
+  localStorage.setItem('isocity_save', JSON.stringify(data));
+  alert('Sauvegardé');
 };
-loadBtn.onclick = ()=>{
-  const raw = localStorage.getItem('minicity_save');
-  if(!raw) return alert('Aucune sauvegarde trouvée');
-  const d = JSON.parse(raw);
-  map = Uint8Array.from(d.map);
-  buildings = d.buildings || [];
-  camX = d.camX || camX; camY = d.camY || camY; zoom = d.zoom || zoom;
-  zoomSlider.value = zoom;
-  alert('Chargé');
+document.getElementById('load').onclick = ()=>{
+  const raw = localStorage.getItem('isocity_save'); if(!raw) return alert('Aucune sauvegarde');
+  const d = JSON.parse(raw); for(let i=0;i<d.map.length;i++) map[i]=d.map[i]; houses.length=0; if(d.houses) for(const h of d.houses) houses.push(h); render();
 };
 
-// initial demo: small road + houses
-(function seedDemo(){
-  for(let y=38;y<42;y++) for(let x=20;x<60;x++) if(y===39||y===40) setTile(x,y,1);
-  // small cross road
-  for(let y=32;y<48;y++) setTile(40,y,1);
-  // houses
-  setTile(38,38,2); buildings.push({i:38,j:38,id:1});
-  setTile(42,38,2); buildings.push({i:42,j:38,id:2});
-  setTile(30,34,2); buildings.push({i:30,j:34,id:3});
+// simple demo seed
+(function seed(){
+  // horizontal highway
+  for(let x=10;x<70;x++) map[idx(x,30)] = 1;
+  for(let y=20;y<40;y++) map[idx(40,y)] = 1;
+  // small houses
+  map[idx(39,29)]=2; houses.push({i:39,j:29});
+  map[idx(41,29)]=2; houses.push({i:41,j:29});
+  map[idx(38,32)]=2; houses.push({i:38,j:32});
+  map[idx(42,32)]=2; houses.push({i:42,j:32});
+  render();
 })();
 
-// allow arrow keys to pan
-window.addEventListener('keydown',(e)=>{
-  const step = 40;
-  if(e.key==='ArrowLeft') camX += step;
-  if(e.key==='ArrowRight') camX -= step;
-  if(e.key==='ArrowUp') camY += step;
-  if(e.key==='ArrowDown') camY -= step;
-});
+// pointer handling small helpers
+let isPanning=false, mouseDown=false, lastPan=null;
+canvas.addEventListener('mousedown', (e)=>{ if(e.button===1||e.button===2){ isPanning=true; lastPan={x:e.clientX,y:e.clientY}; return;} mouseDown=true; handlePointer(e); });
+canvas.addEventListener('mouseup', ()=>{ mouseDown=false; isPanning=false; lastPan=null; });
+canvas.addEventListener('mousemove', (e)=>{ if(isPanning && lastPan){ camX += e.clientX - lastPan.x; camY += e.clientY - lastPan.y; lastPan={x:e.clientX,y:e.clientY}; render(); } if(mouseDown) handlePointer(e); });
 
-// show simple help on first load
-if(!localStorage.getItem('minicity_seen_help')){
-  alert('MiniCity : utilise la souris pour dessiner. Clic droit/milieu pour déplacer la carte. Place routes puis maisons. Start pour lancer la circulation.');
-  localStorage.setItem('minicity_seen_help','1');
-}
+// initial render
+render();
+
 </script>
 </body>
 </html>
