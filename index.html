@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<title>Simu Pop - Prototype</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<style>
+  :root{--bg:#061018;--panel:#071923;--accent:#00d1ff}
+  body{margin:0;background:var(--bg);color:#dff7ff;font-family:Inter,Arial,Helvetica}
+  #top{display:flex;gap:14px;padding:12px;align-items:center}
+  #canvasWrap{width:calc(100vw - 320px);height:calc(100vh - 24px);float:left}
+  canvas{width:100%;height:100%;display:block;background:linear-gradient(#07121a,#021018)}
+  #ui{width:300px;position:fixed;right:12px;top:12px;background:rgba(2,10,14,0.8);border-radius:12px;padding:14px;border:1px solid rgba(0,210,255,0.08)}
+  .stat{margin-bottom:8px}
+  label{display:block;font-size:12px;color:#9feeff;margin-top:8px}
+  input[type=range]{width:100%}
+  button{background:var(--accent);border:none;color:#012;padding:8px 10px;border-radius:8px;font-weight:700;cursor:pointer}
+  .small{font-size:12px;color:#9feeff}
+  #legend{font-size:12px;margin-top:8px}
+</style>
+</head>
+<body>
+<div id="top">
+  <div style="margin-left:12px"><h2 style="margin:0;color:var(--accent)">Simu Pop — Prototype</h2></div>
+</div>
+
+<div id="canvasWrap"><canvas id="c"></canvas></div>
+
+<div id="ui">
+  <div class="stat"><strong>Population :</strong> <span id="pop">0</span></div>
+  <div class="stat"><strong>Richesse totale :</strong> <span id="wealth">0</span></div>
+  <div class="stat"><strong>Richesse moyenne :</strong> <span id="avg">0</span></div>
+  <div class="stat small">Naissances/sec : <span id="birthRate">0</span> — Morts/sec : <span id="deathRate">0</span></div>
+
+  <label>Nombre initial d'agents: <span id="initN">300</span></label>
+  <input id="sliderN" type="range" min="50" max="1500" value="300"/>
+  <label>Vitesse simulation: <span id="speedVal">1</span></label>
+  <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"/>
+
+  <label>Mutation compétence (héritage): <span id="mutVal">0.05</span></label>
+  <input id="mut" type="range" min="0" max="0.2" step="0.01" value="0.05"/>
+
+  <div style="margin-top:10px;display:flex;gap:8px">
+    <button id="start">Démarrer</button>
+    <button id="pause">Pause</button>
+    <button id="reset">Reset</button>
+  </div>
+
+  <div id="legend">
+    <div><span style="color:#00d1ff">●</span> Agent (zoom proche = silhouette)</div>
+    <div><span style="color:#fff">·</span> Agent (zoom éloigné = point)</div>
+    <div style="margin-top:8px" class="small">Agents gagnent richesse en parcourant routes.<br/>Compétence ↗ accélère gains; se transmet aux enfants.</div>
+  </div>
+</div>
+
+<script>
+// ========== Paramètres & util ==========
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W = canvas.width = window.innerWidth - 320;
+let H = canvas.height = window.innerHeight - 24;
+window.addEventListener('resize', ()=>{W = canvas.width = window.innerWidth - 320; H = canvas.height = window.innerHeight - 24});
+
+// UI nodes
+const popN = document.getElementById('pop'), wealthN = document.getElementById('wealth'), avgN = document.getElementById('avg');
+const birthRateN = document.getElementById('birthRate'), deathRateN = document.getElementById('deathRate');
+const sliderN = document.getElementById('sliderN'), initNspan = document.getElementById('initN');
+const speedSlider = document.getElementById('speed'), speedVal = document.getElementById('speedVal');
+const mutSlider = document.getElementById('mut'), mutVal = document.getElementById('mutVal');
+
+initNspan.textContent = sliderN.value;
+sliderN.oninput = ()=> initNspan.textContent = sliderN.value;
+speedSlider.oninput = ()=> speedVal.textContent = speedSlider.value;
+mutSlider.oninput = ()=> mutVal.textContent = mutSlider.value;
+
+let running = false;
+let simSpeed = parseFloat(speedSlider.value);
+let mutationRate = parseFloat(mutSlider.value);
+
+// ========== Route network (synthetic global-like) ==========
+/* For real OSM integration, we'd load polylines via Overpass and build graph.
+   Here we create a pseudo-world: curved major highways + city grids at multiple latitudes. */
+
+const roads = []; // each road is array of points [{x,y},...]
+function makeRingRoad(cx,cy,r,segments,offset=0){
+  const pts=[];
+  for(let i=0;i<segments;i++){
+    const a = (i/segments)*Math.PI*2;
+    pts.push({x: cx + Math.cos(a+offset)*r, y: cy + Math.sin(a+offset)*r});
+  }
+  roads.push(pts);
+}
+
+function makeGrid(x,y,w,h,cols,rows,spacing){
+  // vertical & horizontal lines
+  for(let i=0;i<=cols;i++){
+    const sx = x + i*(w/cols);
+    const pts=[];
+    for(let j=0;j<=rows;j++) pts.push({x: sx, y: y + j*(h/rows)});
+    roads.push(pts);
+  }
+  for(let j=0;j<=rows;j++){
+    const sy = y + j*(h/rows);
+    const pts=[];
+    for(let i=0;i<=cols;i++) pts.push({x: x + i*(w/cols), y: sy});
+    roads.push(pts);
+  }
+}
+
+// create multiple regions
+makeRingRoad(W*0.3, H*0.35, Math.min(W,H)*0.18, 80, 0.2);
+makeRingRoad(W*0.7, H*0.6, Math.min(W,H)*0.22, 100, -0.1);
+makeGrid(W*0.05, H*0.6, W*0.25, H*0.3, 8, 6);
+makeGrid(W*0.6, H*0.08, W*0.35, H*0.25, 10, 8, 30);
+
+// helper: sample a random point along roads
+function sampleRoadPoint(){
+  const r = roads[Math.floor(Math.random()*roads.length)];
+  const idx = Math.floor(Math.random()*(r.length-1));
+  const t = Math.random();
+  const a = r[idx], b = r[(idx+1)%r.length];
+  return {x: a.x*(1-t)+b.x*t, y: a.y*(1-t)+b.y*t, roadIdx: roads.indexOf(r), segIdx: idx, segT: t};
+}
+
+// ========== Agents ==========
+let agents = [];
+let bornPerSec = 0, diedPerSec = 0;
+
+function createAgent(at){
+  // attributes: id, pos{road,seg,t}, speed, age, wealth, skill, energy
+  const skill = Math.max(0.05, 0.5 + (Math.random()-0.5)*0.4); // base skill
+  const a = {
+    id: Math.random().toString(36).slice(2,9),
+    roadIdx: at.roadIdx,
+    segIdx: at.segIdx,
+    t: at.segT,
+    speed: 0.0008 + Math.random()*0.0018, // fraction per tick
+    age: Math.floor(Math.random()*30), // years
+    wealth: Math.random()*10,
+    skill,
+    energy: 1,
+    alive: true,
+    target: null, // target road/seg/t to go to
+  };
+  agents.push(a);
+  return a;
+}
+
+function initAgents(n){
+  agents = [];
+  for(let i=0;i<n;i++) createAgent(sampleRoadPoint());
+}
+
+// ========== Movement & pathing (simple) ==========
+function moveAgent(a, dt){
+  // move along current road segment
+  a.t += a.speed * dt * simSpeed;
+  if(a.t>=1){
+    // step to next segment
+    a.segIdx = (a.segIdx+1) % (roads[a.roadIdx].length);
+    a.t -= 1;
+    // occasionally switch to nearby road
+    if(Math.random() < 0.02) {
+      // jump to another road with some probability (simulating turns/junctions)
+      const newRoad = Math.floor(Math.random()*roads.length);
+      a.roadIdx = newRoad;
+      a.segIdx = Math.floor(Math.random() * roads[a.roadIdx].length);
+      a.t = Math.random();
+    }
+  }
+  // randomly adjust speed a little as behaviour
+  a.speed *= (0.98 + Math.random()*0.04);
+  a.speed = Math.max(0.0004, Math.min(0.004, a.speed));
+  // update age & energy
+  a.age += 0.000002 * dt * simSpeed;
+  a.energy -= 0.0002 * dt * simSpeed;
+  // earn wealth proportional to skill and distance
+  a.wealth += (0.002 * a.skill) * (dt * simSpeed/60);
+  // learning: small chance to increase skill when earning
+  if(Math.random() < 0.001 * a.skill * dt * simSpeed) a.skill += 0.002;
+  if(a.skill > 3) a.skill = 3;
+}
+
+// get actual world pos from road coords
+function agentPos(a){
+  const r = roads[a.roadIdx];
+  const A = r[a.segIdx];
+  const B = r[(a.segIdx+1)%r.length];
+  return {x: A.x*(1-a.t) + B.x*a.t, y: A.y*(1-a.t) + B.y*a.t};
+}
+
+// ========== Lifecycle: birth, death, reproduction ==========
+let lastBirthTick = 0, lastDeathTick = 0;
+function stepLifecycle(dt){
+  // death rules: old age, low energy
+  const deathsThisTick = [];
+  for(let i=agents.length-1;i>=0;i--){
+    const a = agents[i];
+    // random hazard
+    if(Math.random() < 0.00002 * dt * simSpeed) { deathsThisTick.push(a); agents.splice(i,1); continue; }
+    // death by age
+    if(a.age > 80 + Math.random()*20 || a.energy <= 0) { deathsThisTick.push(a); agents.splice(i,1); }
+  }
+  if(deathsThisTick.length>0) diedPerSec += deathsThisTick.length;
+
+  // births: spawn near existing agents that have wealth/energy
+  const potential = agents.filter(a => a.wealth > 5 && a.energy > 0.3);
+  if(potential.length > 0 && Math.random() < 0.002 * dt * simSpeed){
+    const parent = potential[Math.floor(Math.random()*potential.length)];
+    // child inherits skill with mutation
+    const childSkill = Math.max(0.02, parent.skill + (Math.random()*2-1)*mutationRate);
+    const at = {roadIdx: parent.roadIdx, segIdx: parent.segIdx, segT: parent.t};
+    const child = createAgent(at);
+    child.skill = childSkill;
+    child.wealth = parent.wealth * 0.1; parent.wealth *= 0.9; // cost
+    bornPerSec++;
+  }
+}
+
+// simple social learning: nearby agents absorb small fraction of skill
+function socialLearning(dt){
+  // build spatial buckets to avoid O(N^2) for big N (simple grid)
+  const cellSize = 120;
+  const buckets = new Map();
+  for(const a of agents){
+    const p = agentPos(a);
+    const key = `${Math.floor(p.x/cellSize)}_${Math.floor(p.y/cellSize)}`;
+    if(!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push({a,p});
+  }
+  // for each bucket, let agents influence each other
+  for(const [k,arr] of buckets.entries()){
+    if(arr.length < 2) continue;
+    // compute average skill
+    let avg = 0;
+    for(const it of arr) avg += it.a.skill;
+    avg /= arr.length;
+    // pull individuals slightly toward avg
+    for(const it of arr){
+      it.a.skill += (avg - it.a.skill) * 0.001 * simSpeed;
+      // clamp
+      if(it.a.skill < 0.01) it.a.skill = 0.01;
+      if(it.a.skill > 3) it.a.skill = 3;
+    }
+  }
+}
+
+// ========== Simulation loop ==========
+function simStep(dt){
+  // dt in ms
+  simSpeed = parseFloat(speedSlider.value);
+  mutationRate = parseFloat(mutSlider.value);
+  // move agents
+  for(const a of agents) moveAgent(a, dt);
+  // lifecycle
+  stepLifecycle(dt);
+  // learning
+  socialLearning(dt);
+
+  // occasionally create new random migrants to keep diversity
+  if(Math.random() < 0.0005 * dt * simSpeed && agents.length < 2000){
+    createAgent(sampleRoadPoint());
+  }
+}
+
+// ========== Rendering ==========
+let viewZoom = 1.0; // 1 = default, >1 zoom in
+canvas.onwheel = (e)=>{ e.preventDefault(); viewZoom *= (e.deltaY>0?0.95:1.05); viewZoom = Math.max(0.2, Math.min(6, viewZoom)); }
+let last = performance.now();
+function render(){
+  const now = performance.now();
+  const dt = Math.min(60, now - last);
+  last = now;
+  if(running) simStep(dt);
+
+  // clear
+  ctx.clearRect(0,0,W,H);
+  // draw roads (thin depending zoom)
+  ctx.save();
+  ctx.lineWidth = Math.max(1, 1.2* (1/viewZoom));
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  for(const r of roads){
+    ctx.beginPath();
+    for(let i=0;i<r.length;i++){
+      const p = r[i];
+      if(i===0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // draw agents
+  const pop = agents.length;
+  let totalWealth = 0;
+  for(const a of agents){
+    const p = agentPos(a);
+    totalWealth += a.wealth;
+    // size & style depend on zoom
+    if(viewZoom > 1.2){
+      // draw human silhouette
+      ctx.save();
+      const size = 6 + Math.min(10, a.skill*4) * viewZoom;
+      ctx.translate(p.x, p.y);
+      // body
+      ctx.fillStyle = `rgba(0,210,255,${0.5 + Math.min(0.5, a.skill/3)})`;
+      ctx.beginPath();
+      ctx.arc(0, -size*0.2, size*0.45, 0, Math.PI*2); ctx.fill(); // head
+      ctx.fillRect(-size*0.25, -size*0.2, size*0.5, size*0.9); // torso
+      ctx.restore();
+    } else {
+      // draw as point
+      const r = 1.2 + Math.min(3, a.skill*1.2);
+      ctx.fillStyle = `rgba(0,210,255,${0.6 + Math.min(0.4, a.skill/3)})`;
+      ctx.fillRect(p.x - r/2, p.y - r/2, r, r);
+    }
+  }
+
+  // UI stats update
+  popN.textContent = agents.length;
+  wealthN.textContent = (totalWealth).toFixed(1);
+  avgN.textContent = agents.length ? (totalWealth/agents.length).toFixed(2) : '0';
+  // naive birth/death per second approximations
+  birthRateN.textContent = bornPerSec.toFixed(2);
+  deathRateN.textContent = diedPerSec.toFixed(2);
+  // decay counters slowly
+  bornPerSec *= 0.98; diedPerSec *= 0.98;
+
+  requestAnimationFrame(render);
+}
+
+// ========== Controls ==========
+document.getElementById('start').onclick = ()=>{ if(!running){ running = true; last = performance.now(); } };
+document.getElementById('pause').onclick = ()=>{ running = false; };
+document.getElementById('reset').onclick = ()=>{ running = false; initAgents(parseInt(sliderN.value)); bornPerSec = diedPerSec = 0; };
+sliderN.onchange = ()=>{ initAgents(parseInt(sliderN.value)); };
+
+initAgents(parseInt(sliderN.value));
+running = true;
+requestAnimationFrame(render);
+</script>
+</body>
+</html>
